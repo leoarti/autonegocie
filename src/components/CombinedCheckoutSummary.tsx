@@ -17,7 +17,6 @@ interface CombinedCheckoutSummaryProps {
   initialCardCents: number;
   chargeId: string;
   paymentLinkId: string;
-  title: string;
   // cardOriginalCents = valor ORIGINAL (para salvar no DB e enviar à API)
   // cardTotalWithInterestCents = valor COM JUROS (apenas para exibição ao cliente)
   onConfirm: (pixTotalCents: number, cardOriginalCents: number, cardTotalWithInterestCents: number, cardInstallments: number, installmentValueCents: number) => void;
@@ -29,7 +28,6 @@ export function CombinedCheckoutSummary({
   initialCardCents,
   chargeId,
   paymentLinkId,
-  title,
   onConfirm,
 }: CombinedCheckoutSummaryProps) {
   const pixBaseCents = initialPixCents;
@@ -81,8 +79,7 @@ export function CombinedCheckoutSummary({
       <Card className="max-w-2xl w-full p-6 lg:p-8 rounded-2xl shadow-md">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-semibold text-foreground mb-2">Resumo do Pagamento</h1>
-          <p className="text-sm text-muted-foreground">{title}</p>
+          <h1 className="text-2xl font-semibold text-foreground">Resumo do Pagamento</h1>
         </div>
 
         {/* Payment Method Cards */}

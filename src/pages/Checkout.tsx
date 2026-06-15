@@ -369,7 +369,6 @@ export default function Checkout() {
         initialCardCents={charge.card_amount || 0}
         chargeId={charge.charge_id || charge.id}
         paymentLinkId={charge.id || id || ''}
-        title={charge.title || charge.description || 'Pagamento'}
         onConfirm={handleCombinedConfirm}
       />
     );
