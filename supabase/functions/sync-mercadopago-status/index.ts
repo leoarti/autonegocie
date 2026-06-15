@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  cancelPendingSiblings,
+  tryCompleteCharge,
+} from "../_shared/charge-completion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,6 +122,10 @@ Deno.serve(async (req) => {
         synced++;
         console.log(`Synced split ${split.id}: ${abacateStatus}`);
 
+        if (isPaid && split.charge_id) {
+          await cancelPendingSiblings(supabase, split.charge_id, split.id, "pix");
+        }
+
         if (split.charge_id) {
           updatedCharges.add(split.charge_id);
         }
@@ -130,57 +138,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update charge statuses for approved payments
+    // Tenta fechar cada charge cujo split foi concluded neste batch
     if (approved > 0) {
       const chargeIds = [...new Set(pendingSplits.filter(s => s.charge_id).map(s => s.charge_id))];
-
       for (const chargeId of chargeIds) {
-        const { data: allSplits } = await supabase
-          .from("payment_splits")
-          .select("id, status")
-          .eq("charge_id", chargeId);
-
-        const nonFailed = (allSplits || []).filter(s => s.status !== "failed");
-        if (nonFailed.length > 0 && nonFailed.every(s => s.status === "concluded")) {
-          await supabase
-            .from("charges")
-            .update({
-              status: "completed",
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", chargeId);
-          console.log(`Charge ${chargeId} marked as completed`);
-        }
+        await tryCompleteCharge(supabase, chargeId);
       }
     }
 
-    // Fix orphaned charges: PIX charges with all splits concluded but charge still pending
+    // Varrer charges PIX/combinado pending para fechar as órfãs
     const { data: orphanedCharges } = await supabase
       .from("charges")
       .select("id")
       .eq("status", "pending")
-      .eq("payment_method", "pix");
+      .in("payment_method", ["pix", "cartao_pix"]);
 
     if (orphanedCharges && orphanedCharges.length > 0) {
-      console.log(`Checking ${orphanedCharges.length} potentially orphaned PIX charges`);
-
+      console.log(`Checking ${orphanedCharges.length} potentially orphaned charges`);
       for (const charge of orphanedCharges) {
-        const { data: chargeSplits } = await supabase
-          .from("payment_splits")
-          .select("id, status")
-          .eq("charge_id", charge.id);
-
-        const nonFailedSplits = (chargeSplits || []).filter(s => s.status !== "failed");
-        if (nonFailedSplits.length > 0 && nonFailedSplits.every(s => s.status === "concluded")) {
-          await supabase
-            .from("charges")
-            .update({
-              status: "completed",
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", charge.id);
-          console.log(`Fixed orphaned charge ${charge.id} - marked as completed`);
-        }
+        await tryCompleteCharge(supabase, charge.id);
       }
     }
 

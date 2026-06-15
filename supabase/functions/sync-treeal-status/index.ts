@@ -9,6 +9,10 @@ import {
   mapTreealStatus,
   TREEAL_CASHIN_URL,
 } from "../_shared/treeal-auth.ts";
+import {
+  cancelPendingSiblings,
+  tryCompleteCharge,
+} from "../_shared/charge-completion.ts";
 
 /**
  * sync-treeal-status
@@ -124,6 +128,10 @@ Deno.serve(async (req) => {
         await supabase.from("payment_splits").update(updateData).eq("id", split.id);
         synced++;
 
+        if (isPaid && split.charge_id) {
+          await cancelPendingSiblings(supabase, split.charge_id, split.id, "pix");
+        }
+
         console.log(`[sync-treeal-status] Split ${split.id}: ${treealStatus} → ${internalStatus}`);
 
         // Rate limit: 100ms between API calls
@@ -134,57 +142,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Update charge statuses — all NON-FAILED splits must be concluded
+    // 4. Try to complete each charge whose split foi concluded neste batch
     for (const chargeId of concludedChargeIds) {
-      const { data: allSplits } = await supabase
-        .from("payment_splits")
-        .select("id, status")
-        .eq("charge_id", chargeId);
-
-      if (!allSplits || allSplits.length === 0) continue;
-
-      const nonFailed = allSplits.filter((s) => s.status !== "failed");
-      const allNonFailedConcluded =
-        nonFailed.length > 0 && nonFailed.every((s) => s.status === "concluded");
-
-      if (allNonFailedConcluded) {
-        await supabase
-          .from("charges")
-          .update({ status: "completed", completed_at: new Date().toISOString() })
-          .eq("id", chargeId);
-        console.log(`[sync-treeal-status] Charge ${chargeId} marked as completed`);
-      }
+      await tryCompleteCharge(supabase, chargeId);
     }
 
-    // 5. Fix orphaned PIX charges (all non-failed splits concluded but charge still pending)
+    // 5. Varrer charges PIX pending para fechar as órfãs (concluded antigo + irmão pending)
     const { data: orphanedCharges } = await supabase
       .from("charges")
       .select("id")
       .eq("status", "pending")
-      .eq("payment_method", "pix");
+      .in("payment_method", ["pix", "cartao_pix"]);
 
     if (orphanedCharges && orphanedCharges.length > 0) {
-      console.log(`[sync-treeal-status] Checking ${orphanedCharges.length} potentially orphaned PIX charges`);
+      console.log(
+        `[sync-treeal-status] Checking ${orphanedCharges.length} potentially orphaned charges`,
+      );
 
       for (const charge of orphanedCharges) {
-        const { data: chargeSplits } = await supabase
-          .from("payment_splits")
-          .select("id, status")
-          .eq("charge_id", charge.id);
-
-        if (!chargeSplits || chargeSplits.length === 0) continue;
-
-        const nonFailed = chargeSplits.filter((s) => s.status !== "failed");
-        const allNonFailedConcluded =
-          nonFailed.length > 0 && nonFailed.every((s) => s.status === "concluded");
-
-        if (allNonFailedConcluded) {
-          await supabase
-            .from("charges")
-            .update({ status: "completed", completed_at: new Date().toISOString() })
-            .eq("id", charge.id);
-          console.log(`[sync-treeal-status] Fixed orphaned charge ${charge.id}`);
-        }
+        await tryCompleteCharge(supabase, charge.id);
       }
     }
 

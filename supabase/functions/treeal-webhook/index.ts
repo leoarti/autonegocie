@@ -2,6 +2,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { mapTreealStatus } from "../_shared/treeal-auth.ts";
+import {
+  cancelPendingSiblings,
+  tryCompleteCharge,
+} from "../_shared/charge-completion.ts";
 
 /**
  * Treeal PIX webhook — BACEN PIX standard payload.
@@ -75,25 +79,8 @@ Deno.serve(async (req) => {
       console.log("Split", split.id, "marked as concluded via Treeal webhook");
 
       if (split.charge_id) {
-        const { data: allSplits } = await supabase
-          .from("payment_splits")
-          .select("id, status")
-          .eq("charge_id", split.charge_id);
-
-        if (allSplits) {
-          const allConcluded = allSplits.every((s) =>
-            s.id === split.id ? true : s.status === "concluded"
-          );
-
-          if (allConcluded) {
-            await supabase
-              .from("charges")
-              .update({ status: "completed", completed_at: new Date().toISOString() })
-              .eq("id", split.charge_id);
-
-            console.log("Charge completed:", split.charge_id);
-          }
-        }
+        await cancelPendingSiblings(supabase, split.charge_id, split.id, "pix");
+        await tryCompleteCharge(supabase, split.charge_id);
       }
     }
 

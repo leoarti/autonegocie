@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  cancelPendingSiblings,
+  tryCompleteCharge,
+} from "../_shared/charge-completion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,26 +125,9 @@ Deno.serve(async (req) => {
 
     console.log("Updated split", split.id, "to status:", internalStatus);
 
-    // If paid, check if all splits are done
     if (isPaid && split.charge_id) {
-      const { data: allSplits } = await supabase
-        .from("payment_splits")
-        .select("id, status, method")
-        .eq("charge_id", split.charge_id);
-
-      if (allSplits) {
-        const allConcluded = allSplits.every(s => s.status === "concluded");
-        if (allConcluded) {
-          console.log("All splits concluded, updating charge status");
-          await supabase
-            .from("charges")
-            .update({
-              status: "completed",
-              completed_at: new Date().toISOString(),
-            })
-            .eq("id", split.charge_id);
-        }
-      }
+      await cancelPendingSiblings(supabase, split.charge_id, split.id, "pix");
+      await tryCompleteCharge(supabase, split.charge_id);
     }
 
     return new Response("OK", { status: 200, headers: corsHeaders });

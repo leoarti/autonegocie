@@ -9,6 +9,10 @@ import {
   mapTreealStatus,
   TREEAL_CASHIN_URL,
 } from "../_shared/treeal-auth.ts";
+import {
+  cancelPendingSiblings,
+  tryCompleteCharge,
+} from "../_shared/charge-completion.ts";
 
 interface StatusRequest {
   payment_split_id?: string;
@@ -119,27 +123,8 @@ Deno.serve(async (req) => {
           .single();
 
         if (splitData?.charge_id) {
-          const { data: allSplits } = await supabase
-            .from("payment_splits")
-            .select("id, status")
-            .eq("charge_id", splitData.charge_id);
-
-          // All non-failed splits must be concluded (handles duplicate splits)
-          const nonFailed = allSplits?.filter((s) => s.status !== "failed") || [];
-          const allNonFailedConcluded =
-            nonFailed.length > 0 &&
-            nonFailed.every((s) =>
-              s.id === payment_split_id ? true : s.status === "concluded"
-            );
-
-          if (allNonFailedConcluded) {
-            await supabase
-              .from("charges")
-              .update({ status: "completed", completed_at: new Date().toISOString() })
-              .eq("id", splitData.charge_id);
-
-            console.log("Charge completed:", splitData.charge_id);
-          }
+          await cancelPendingSiblings(supabase, splitData.charge_id, payment_split_id, "pix");
+          await tryCompleteCharge(supabase, splitData.charge_id);
         }
       }
     }
