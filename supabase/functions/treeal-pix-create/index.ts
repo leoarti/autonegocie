@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const body: CreatePixRequest = await req.json();
-    const { payment_split_id, amount_cents, payer_name, payer_document, description } = body;
+    const { payment_split_id, charge_id, amount_cents, payer_name, payer_document, description } = body;
 
     if (!amount_cents || amount_cents <= 0) {
       return new Response(
@@ -46,6 +46,28 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Dados do pagador incompletos" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // Não gerar novo QR se a charge já foi quitada — evita cobrar o cliente
+    // duas vezes por acidente quando alguém reabre o link após o pagamento.
+    if (charge_id) {
+      const { data: charge } = await supabase
+        .from("charges")
+        .select("status, completed_at")
+        .eq("id", charge_id)
+        .maybeSingle();
+
+      if (charge?.status === "completed") {
+        console.log(`[treeal-pix-create] Charge ${charge_id} já está completed — recusando gerar novo QR`);
+        return new Response(
+          JSON.stringify({
+            error: "charge_already_completed",
+            message: "Esta cobrança já foi paga. Não é possível gerar novo QR Code.",
+            completed_at: charge.completed_at,
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     // Return existing QR code if already generated for this split

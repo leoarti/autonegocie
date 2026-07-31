@@ -6,6 +6,58 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+// Splits que representam pagamento efetivo. Só estes entram no total pago
+// e na lista de "Meios Utilizados" do comprovante. Splits pending/failed/
+// cancelled/expired existem no banco (regeneração de QR, tentativas
+// canceladas) mas não devem aparecer inflando o valor.
+function isPaidSplit(s: { status?: string | null }): boolean {
+  return s.status === 'concluded' || s.status === 'boleto_linked'
+}
+
+function sumPaidCents(splits: Array<{ status?: string | null; display_amount_cents?: number | null; amount_cents?: number | null }>): number {
+  return splits
+    .filter(isPaidSplit)
+    .reduce((sum, s) => sum + (s.display_amount_cents ?? s.amount_cents ?? 0), 0)
+}
+
+// Prioridade para escolher o split representativo de cada método:
+// concluded > analyzing > pending > (demais). Evita mostrar um QR pendente
+// gerado depois do pagamento efetivo.
+const STATUS_PRIORITY: Record<string, number> = {
+  concluded: 0,
+  boleto_linked: 0,
+  analyzing: 1,
+  pending: 2,
+  processing: 2,
+  failed: 3,
+  cancelled: 3,
+  canceled: 3,
+  expired: 3,
+}
+
+function bestSplitByMethod<T extends { method?: string | null; status?: string | null; created_at?: string | null }>(splits: T[]): T[] {
+  const best = new Map<string, T>()
+  for (const s of splits) {
+    const method = s.method ?? ''
+    const current = best.get(method)
+    if (!current) {
+      best.set(method, s)
+      continue
+    }
+    const currentPrio = STATUS_PRIORITY[current.status ?? ''] ?? 99
+    const candidatePrio = STATUS_PRIORITY[s.status ?? ''] ?? 99
+    if (candidatePrio < currentPrio) {
+      best.set(method, s)
+    } else if (candidatePrio === currentPrio) {
+      // desempate: mais recente ganha
+      const currentTs = current.created_at ? Date.parse(current.created_at) : 0
+      const candidateTs = s.created_at ? Date.parse(s.created_at) : 0
+      if (candidateTs > currentTs) best.set(method, s)
+    }
+  }
+  return Array.from(best.values())
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -90,22 +142,24 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('charge_id', chargeIdParam)
         .order('created_at', { ascending: false })
-      
+
       // Verificar se pagamento está confirmado via metadata ou status
       const isPaidByMetadata = charge.metadata?.pix_paid_at || charge.status === 'completed'
       const paidAt = charge.metadata?.pix_paid_at || charge.completed_at || paidAtParam || new Date().toISOString()
-      
+
       // Se não há splits, criar um "virtual" baseado nos dados da charge
-      const finalSplits = splits && splits.length > 0 ? splits : [{
+      const rawSplits = splits && splits.length > 0 ? splits : [{
         id: 'virtual-pix',
         method: methodParam?.toUpperCase() || 'PIX',
         amount_cents: charge.amount,
         status: 'concluded',
         processed_at: paidAt
       }]
-      
-      const totalPaidCents = finalSplits.reduce((sum, s) => sum + (s.display_amount_cents || s.amount_cents || 0), 0)
-      
+
+      // Só splits efetivamente pagos entram no comprovante
+      const finalSplits = rawSplits.filter(isPaidSplit)
+      const totalPaidCents = sumPaidCents(rawSplits)
+
       return new Response(JSON.stringify({
         paid: true,
         charge: {
@@ -233,7 +287,7 @@ Deno.serve(async (req) => {
           .eq('charge_id', token)
           .order('created_at', { ascending: false })
 
-        const finalSplits = splits && splits.length > 0 ? splits : [{
+        const rawSplits = splits && splits.length > 0 ? splits : [{
           id: 'virtual',
           method: 'CREDIT_CARD',
           amount_cents: charge.amount,
@@ -241,9 +295,13 @@ Deno.serve(async (req) => {
           processed_at: new Date().toISOString()
         }]
 
-        const isPaid = finalSplits.every(s => s.status === 'concluded')
-        const analyzingSplit = finalSplits.find(s => s.status === 'analyzing')
-        const totalPaidCents = finalSplits.reduce((sum, s) => sum + (s.display_amount_cents || s.amount_cents || 0), 0)
+        // Reduzir para um por método priorizando concluded>analyzing>pending
+        const bestSplits = bestSplitByMethod(rawSplits)
+        const isPaid = bestSplits.length > 0 && bestSplits.every(s => isPaidSplit(s))
+        const analyzingSplit = bestSplits.find(s => s.status === 'analyzing')
+        const totalPaidCents = sumPaidCents(rawSplits)
+        // Lista para exibição: só pagos/em análise (nunca pending/failed antigos)
+        const finalSplits = bestSplits.filter(s => isPaidSplit(s) || s.status === 'analyzing')
 
         return new Response(JSON.stringify({
           paid: isPaid,
@@ -302,18 +360,12 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Filtrar para pegar APENAS o split mais recente de cada método
-    const latestSplitsByMethod = new Map<string, any>();
-    if (allSplits) {
-      for (const split of allSplits) {
-        if (!latestSplitsByMethod.has(split.method)) {
-          latestSplitsByMethod.set(split.method, split);
-        }
-      }
-    }
-    let splits = Array.from(latestSplitsByMethod.values());
-    
-    console.log('[thank-you-summary] Latest splits only:', splits?.map(s => ({ id: s.id, method: s.method, status: s.status })))
+    // Escolher o melhor split por método (concluded > analyzing > pending > demais).
+    // Antes o código pegava o "mais recente por método", o que fazia um QR pending
+    // gerado após o pagamento sobrepor o split concluded original.
+    let splits = allSplits ? bestSplitByMethod(allSplits) : [];
+
+    console.log('[thank-you-summary] Best split by method:', splits?.map(s => ({ id: s.id, method: s.method, status: s.status })))
 
     // Fallback: buscar por charge_id se não houver splits por payment_link_id
     let finalSplits = splits
@@ -330,15 +382,8 @@ Deno.serve(async (req) => {
           .order('created_at', { ascending: false })
 
         if (!chargeError && splitsByCharge && splitsByCharge.length > 0) {
-          // Também filtrar por método
-          const methodMap = new Map<string, any>();
-          for (const split of splitsByCharge) {
-            if (!methodMap.has(split.method)) {
-              methodMap.set(split.method, split);
-            }
-          }
-          finalSplits = Array.from(methodMap.values());
-          console.log('[thank-you-summary] Fallback successful! Latest splits by charge_id:', finalSplits.length)
+          finalSplits = bestSplitByMethod(splitsByCharge);
+          console.log('[thank-you-summary] Fallback successful! Best splits by charge_id:', finalSplits.length)
         }
       }
 
@@ -512,12 +557,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Calcular valor total realmente pago (soma dos splits)
-    // ✅ Usar display_amount_cents se disponível (valor COM JUROS), senão amount_cents
-    const totalPaidCents = finalSplits?.reduce((sum, s) => {
-      return sum + (s.display_amount_cents || s.amount_cents || 0);
-    }, 0) || 0
-    console.log('[thank-you-summary] Total paid cents:', totalPaidCents)
+    // Só splits pagos entram no total do comprovante (ignora pending/failed/cancelled)
+    const totalPaidCents = sumPaidCents(finalSplits ?? [])
+    // Lista para exibição segue o mesmo filtro
+    const displaySplits = (finalSplits ?? []).filter(isPaidSplit)
+    console.log('[thank-you-summary] Total paid cents:', totalPaidCents, '| paid splits:', displaySplits.length)
 
     // Montar resposta
     const response = {
@@ -531,12 +575,12 @@ Deno.serve(async (req) => {
         paid: true,
         paid_at: finalSplits[0]?.processed_at || new Date().toISOString()
       },
-      splits: (finalSplits || []).map(split => ({
+      splits: displaySplits.map(split => ({
         id: split.id,
         method: split.method,
-        // ✅ Usar display_amount_cents para exibição no comprovante (valor COM JUROS)
+        // Valor exibido usa display_amount_cents (com juros/taxa) quando disponível
         amount_cents: split.display_amount_cents || split.amount_cents,
-        original_amount_cents: split.amount_cents, // Valor ORIGINAL (para referência)
+        original_amount_cents: split.amount_cents,
         status: split.status.toUpperCase(),
         processed_at: split.processed_at
       })),
