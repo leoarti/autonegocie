@@ -28,6 +28,7 @@ const CHARGES_SELECT = `
   pre_payment_key,
   boleto_linha_digitavel,
   boleto_admin_linha_digitavel,
+  boleto_pix_cartao_linha_digitavel,
   creditor_document,
   creditor_name,
   company_id,
