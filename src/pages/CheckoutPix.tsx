@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, CheckCircle2, Clock, Copy, QrCode, RefreshCw } from 'lucide-react';
-// supabase client still needed for functions.invoke in createPixPayment and status check
-import { supabase } from '@/integrations/supabase/client';
+// db client still needed for functions.invoke in createPixPayment and status check
+import { db, functionsBaseUrl } from '@/integrations/firebase/client';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -65,16 +65,8 @@ function CheckoutPixContent() {
       }
 
       try {
-        // Fetch charge data via public-payment-link edge function (GET, no auth needed for public route)
-        const supabaseUrl = 'https://gsbbrkbeyxsqqjqhptrn.supabase.co';
-        const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzYmJya2JleXhzcXFqcWhwdHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODk5NTQsImV4cCI6MjA3Mzg2NTk1NH0.I5l0SDwsAN_rsSdoZiE9GAndkn3tkqX44O5ypu0cu7w';
-        
-        const response = await fetch(`${supabaseUrl}/functions/v1/public-payment-link?id=${encodeURIComponent(id)}`, {
+        const response = await fetch(`${functionsBaseUrl}/public-payment-link?id=${encodeURIComponent(id)}`, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${anonKey}`,
-            'apikey': anonKey,
-          },
         });
 
         if (!response.ok) {
@@ -115,7 +107,7 @@ function CheckoutPixContent() {
 
         // Check if there's an existing PIX split (payment_splits has public read RLS)
         // Fetch ALL pix splits to find one with active QR or concluded status
-        const { data: existingSplits } = await supabase
+        const { data: existingSplits } = await db
           .from('payment_splits')
           .select('*')
           .eq('charge_id', chargeData.id)
@@ -157,7 +149,7 @@ function CheckoutPixContent() {
               esperado: expectedTotal,
               diff: splitDisplayAmount - expectedTotal,
             });
-            await supabase
+            await db
               .from('payment_splits')
               .update({
                 amount_cents: chargeData.amount,
@@ -203,7 +195,7 @@ function CheckoutPixContent() {
 
       if (!currentSplitId) {
         // Double-check: look for any existing pending pix split with QR for this charge
-        const { data: existingPix } = await supabase
+        const { data: existingPix } = await db
           .from('payment_splits')
           .select('id, mp_payment_id')
           .eq('charge_id', charge.id)
@@ -218,7 +210,7 @@ function CheckoutPixContent() {
           currentSplitId = existingPix[0].id;
           setSplitId(currentSplitId);
         } else {
-          const { data: newSplit, error: splitError } = await supabase
+          const { data: newSplit, error: splitError } = await db
             .from('payment_splits')
             .insert({
               charge_id: charge.id,
@@ -243,7 +235,7 @@ function CheckoutPixContent() {
       }
 
       // Create PIX payment via Mercado Pago
-      const { data, error: createError } = await supabase.functions.invoke('treeal-pix-create', {
+      const { data, error: createError } = await db.functions.invoke('treeal-pix-create', {
         body: {
           payment_split_id: currentSplitId,
           charge_id: charge.id,
@@ -296,7 +288,7 @@ function CheckoutPixContent() {
 
     const checkStatus = async () => {
       try {
-        const { data, error: statusError } = await supabase.functions.invoke('treeal-pix-status', {
+        const { data, error: statusError } = await db.functions.invoke('treeal-pix-status', {
           body: {
             payment_split_id: splitId,
           },
@@ -338,7 +330,7 @@ function CheckoutPixContent() {
 
     setChecking(true);
     try {
-      const { data, error: statusError } = await supabase.functions.invoke('treeal-pix-status', {
+      const { data, error: statusError } = await db.functions.invoke('treeal-pix-status', {
         body: {
           payment_split_id: splitId,
         },

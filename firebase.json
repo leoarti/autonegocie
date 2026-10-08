@@ -1,0 +1,476 @@
+{
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22",
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ]
+  },
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/admin-reports",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/admin-reports/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/admin-reset-password",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/admin-reset-password/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/charge-links",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/charge-links/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/company-settings",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/company-settings/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/create-admin-user",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/create-admin-user/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/create-user-admin",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/create-user-admin/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/export-worker",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/export-worker/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/payment-splits",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/payment-splits/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/public-payment-link",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/public-payment-link/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/public-payment-splits",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/public-payment-splits/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/send-mock-message",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/send-mock-message/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/subscription-manager",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/subscription-manager/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/subscription-status",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/subscription-status/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/thank-you-summary",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/thank-you-summary/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/update-company-settings",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/update-company-settings/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/export-file",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/export-file/**",
+        "function": "api",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/admin-link-boleto",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/admin-link-boleto/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/conclude-card-payment",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/conclude-card-payment/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/process-charge",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/process-charge/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/process-payment",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/process-payment/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitamais-auth",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitamais-auth/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitamais-link-search",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitamais-link-search/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitamais-payment-link",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitamais-payment-link/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-link-boleto",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-link-boleto/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-prepayment",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-prepayment/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-prepayment-status",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-prepayment-status/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-prepayment-test",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-prepayment-test/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-proxy",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-proxy/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-simulation",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-simulation/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-token",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/quitaplus-token/**",
+        "function": "payments",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/mercadopago-pix-create",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/mercadopago-pix-create/**",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/mercadopago-pix-status",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/mercadopago-pix-status/**",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/mercadopago-webhook",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/mercadopago-webhook/**",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/treeal-pix-create",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/treeal-pix-create/**",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/treeal-pix-status",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/treeal-pix-status/**",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/treeal-webhook",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/treeal-webhook/**",
+        "function": "webhooks",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/recurrences-manager",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/recurrences-manager/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/recurring-charges-cron",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/recurring-charges-cron/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/refunds-scheduler",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/refunds-scheduler/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-card-status",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-card-status/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-mercadopago-status",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-mercadopago-status/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-payment-status",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-payment-status/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-treeal-status",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "/api/sync-treeal-status/**",
+        "function": "jobs",
+        "region": "southamerica-east1"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8088
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  }
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -81,7 +81,7 @@ export default function RefundManagement() {
       if (chargeIdFilter) params.set('chargeId', chargeIdFilter);
       params.set('limit', '100');
 
-      const { data, error } = await supabase.functions.invoke('refunds-scheduler', {
+      const { data, error } = await db.functions.invoke('refunds-scheduler', {
         body: { 
           path: `/refunds/jobs?${params.toString()}`,
           method: 'GET'
@@ -107,7 +107,7 @@ export default function RefundManagement() {
       setRunningScheduler(true);
       setSchedulerStats(null);
       
-      const { data, error } = await supabase.functions.invoke('refunds-scheduler', {
+      const { data, error } = await db.functions.invoke('refunds-scheduler', {
         body: { 
           path: '/refunds/scheduler/run',
           method: 'POST',
@@ -141,7 +141,7 @@ export default function RefundManagement() {
     try {
       setExecutingJob(jobId);
       
-      const { data, error } = await supabase.functions.invoke('refunds-scheduler', {
+      const { data, error } = await db.functions.invoke('refunds-scheduler', {
         body: { 
           path: `/refunds/${jobId}/execute`,
           method: 'POST'

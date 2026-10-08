@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentSplits } from "@/components/PaymentSplits";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { db, functionsBaseUrl } from '@/integrations/firebase/client';
 import autonegocie from "@/assets/autonegocie-logo.jpg";
 
 interface Charge {
@@ -50,7 +50,7 @@ export default function Payment() {
       try {
         setLoading(true);
         const response = await fetch(
-          `https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/public-payment-link?token=${token}`
+          `${functionsBaseUrl}/public-payment-link?token=${token}`
         );
         
         if (!response.ok) {
@@ -106,7 +106,7 @@ export default function Payment() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('charges')
         .select('*')
         .eq('id', chargeId)
@@ -152,7 +152,7 @@ export default function Payment() {
       // Se não tiver token, buscar payment_link relacionado à cobrança
       setTimeout(async () => {
         try {
-          const { data: paymentLink } = await supabase
+          const { data: paymentLink } = await db
             .from('payment_links')
             .select('link_id')
             .eq('order_id', charge?.id)

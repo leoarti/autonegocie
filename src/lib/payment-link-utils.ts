@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 
 export interface PaymentLinkData {
   link_id: string;
@@ -14,7 +14,7 @@ export interface PaymentLinkData {
 export async function createPaymentLinkForCharge(chargeId: string): Promise<PaymentLinkData | null> {
   try {
     // Verificar se já existe um payment link para esta cobrança
-    const { data: existingLink, error: searchError } = await supabase
+    const { data: existingLink, error: searchError } = await db
       .from('payment_links')
       .select('*')
       .eq('order_id', chargeId)
@@ -32,7 +32,7 @@ export async function createPaymentLinkForCharge(chargeId: string): Promise<Paym
     }
 
     // Buscar dados da cobrança
-    const { data: charge, error: chargeError } = await supabase
+    const { data: charge, error: chargeError } = await db
       .from('charges')
       .select('*')
       .eq('id', chargeId)
@@ -49,7 +49,7 @@ export async function createPaymentLinkForCharge(chargeId: string): Promise<Paym
     const linkUrl = `${baseUrl}/payment?token=${linkId}&charge=${chargeId}`;
 
     // Criar registro no payment_links
-    const { data: newLink, error: createError } = await supabase
+    const { data: newLink, error: createError } = await db
       .from('payment_links')
       .insert({
         link_id: linkId,

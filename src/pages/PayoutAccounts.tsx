@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Plus, Edit, Trash2, Wallet, Check, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -97,7 +97,7 @@ export default function PayoutAccounts() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('payout_accounts')
         .select('*')
         .eq('user_id', profile.id)
@@ -137,7 +137,7 @@ export default function PayoutAccounts() {
       };
 
       if (editingAccount) {
-        const { error } = await supabase
+        const { error } = await db
           .from('payout_accounts')
           .update(accountData)
           .eq('id', editingAccount.id);
@@ -145,7 +145,7 @@ export default function PayoutAccounts() {
         if (error) throw error;
         toast({ title: "Conta atualizada!" });
       } else {
-        const { error } = await supabase
+        const { error } = await db
           .from('payout_accounts')
           .insert(accountData);
 
@@ -181,7 +181,7 @@ export default function PayoutAccounts() {
 
   const handleToggleActive = async (accountId: string, isActive: boolean) => {
     try {
-      await supabase.from('payout_accounts').update({ is_active: !isActive }).eq('id', accountId);
+      await db.from('payout_accounts').update({ is_active: !isActive }).eq('id', accountId);
       toast({ title: isActive ? "Conta desativada!" : "Conta ativada!" });
       loadAccounts();
     } catch (error) {
@@ -193,7 +193,7 @@ export default function PayoutAccounts() {
     if (!profile) return;
     
     try {
-      await supabase.from('profiles').update({ default_payout_account_id: accountId }).eq('id', profile.id);
+      await db.from('profiles').update({ default_payout_account_id: accountId }).eq('id', profile.id);
       toast({ title: "Conta padrão definida!" });
     } catch (error) {
       toast({ title: "Erro", variant: "destructive" });

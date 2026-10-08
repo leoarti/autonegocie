@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Calendar, ExternalLink, AlertTriangle, CheckCircle, Clock, X, Ban } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -46,7 +46,7 @@ export function ChargeExecutions({ chargeId }: ChargeExecutionsProps) {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase.functions.invoke('recurrences-manager', {
+      const { data, error } = await db.functions.invoke('recurrences-manager', {
         body: { 
           action: 'get_executions',
           charge_id: chargeId
@@ -73,7 +73,7 @@ export function ChargeExecutions({ chargeId }: ChargeExecutionsProps) {
     try {
       setMarkingExecution(selectedExecution.id);
       
-      const { data, error } = await supabase.functions.invoke('recurrences-manager', {
+      const { data, error } = await db.functions.invoke('recurrences-manager', {
         body: { 
           action: 'mark_execution',
           execution_id: selectedExecution.id,

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { startOfMonth, endOfDay } from 'date-fns';
 
@@ -106,7 +106,7 @@ async function fetchChargesPage(
   page: number,
   isAdmin: boolean,
 ) {
-  let query = supabase
+  let query = db
     .from('charges')
     .select(CHARGES_SELECT, { count: 'exact' });
 

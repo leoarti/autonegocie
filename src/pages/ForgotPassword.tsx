@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +30,7 @@ export default function ForgotPassword() {
       // Get the redirect URL
       const redirectUrl = `${window.location.origin}/reset-password`;
 
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      const { error: resetError } = await db.auth.resetPasswordForEmail(
         validated.email,
         {
           redirectTo: redirectUrl,

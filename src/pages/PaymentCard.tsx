@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentForm } from '@/components/PaymentForm';
@@ -63,7 +63,7 @@ export default function PaymentCard() {
       if (!id) return;
 
       try {
-        const { data, error } = await supabase.functions.invoke('public-payment-splits', {
+        const { data, error } = await db.functions.invoke('public-payment-splits', {
           body: { id },
         });
 
@@ -107,7 +107,7 @@ export default function PaymentCard() {
           console.log('[PaymentCard] Verificando status do pré-pagamento na API Cappta...');
           
           try {
-            const { data: statusData } = await supabase.functions.invoke('quitaplus-prepayment-status', {
+            const { data: statusData } = await db.functions.invoke('quitaplus-prepayment-status', {
               body: { prePaymentKey: cardSplit.pre_payment_key }
             });
 
@@ -204,7 +204,7 @@ export default function PaymentCard() {
     try {
       console.log('[PaymentCard] Finalizando pagamento via edge function...');
       
-      const { data, error } = await supabase.functions.invoke('conclude-card-payment', {
+      const { data, error } = await db.functions.invoke('conclude-card-payment', {
         body: {
           payment_link_id: charge.id,
           amount_cents: cardAmount,

@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, profile, loading: authLoading, isAdmin } = useAuth();
+  const { user, profile, loading: authLoading, isAdmin, signOut } = useAuth();
 
   // Show loading while auth is loading
   if (authLoading) {
@@ -24,11 +24,16 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  // Profile ainda carregando - mostrar loading (não "Acesso Negado")
   if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
+        <div className="text-center space-y-3">
+          <h2 className="text-2xl font-bold mb-2">Perfil não encontrado</h2>
+          <p className="text-muted-foreground">Não foi possível carregar o perfil desta conta.</p>
+          <button type="button" className="text-sm text-primary underline" onClick={() => signOut()}>
+            Sair
+          </button>
+        </div>
       </div>
     );
   }

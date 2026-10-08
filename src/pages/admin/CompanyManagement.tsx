@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,7 +49,7 @@ export default function CompanyManagement() {
 
   const fetchCompanies = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('companies')
         .select('*')
         .order('created_at', { ascending: false });
@@ -80,7 +80,7 @@ export default function CompanyManagement() {
       const cleanDocument = formData.document.replace(/\D/g, '');
       
       if (editingCompany) {
-        const { error } = await supabase
+        const { error } = await db
           .from('companies')
           .update({
             name: formData.name,
@@ -97,7 +97,7 @@ export default function CompanyManagement() {
           description: "As alterações foram salvas com sucesso",
         });
       } else {
-        const { error } = await supabase
+        const { error } = await db
           .from('companies')
           .insert({
             name: formData.name,
@@ -129,7 +129,7 @@ export default function CompanyManagement() {
 
   const toggleCompanyStatus = async (company: Company) => {
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from('companies')
         .update({ is_active: !company.is_active })
         .eq('id', company.id);

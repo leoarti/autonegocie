@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, CheckCircle2, Clock, Copy, QrCode, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { toast } from 'sonner';
 
 interface PixData {
@@ -82,7 +82,7 @@ export default function PaymentPix() {
         console.log('PaymentPix: Fetching data for id:', id);
 
         // Use public edge function that bypasses RLS
-        const { data, error: fetchError } = await supabase.functions.invoke('public-payment-splits', {
+        const { data, error: fetchError } = await db.functions.invoke('public-payment-splits', {
           body: { id }
         });
 
@@ -185,7 +185,7 @@ export default function PaymentPix() {
               atual: splitDisplayAmount,
               esperado: expectedTotal,
             });
-            const { error: updateErr } = await supabase
+            const { error: updateErr } = await db
               .from('payment_splits')
               .update({
                 display_amount_cents: expectedTotal,
@@ -224,7 +224,7 @@ export default function PaymentPix() {
       const expectedTotal = baseCents + Math.round(baseCents * PIX_FEE_PERCENT);
       const amountCents = expectedTotal;
 
-      const { data, error: createError } = await supabase.functions.invoke('treeal-pix-create', {
+      const { data, error: createError } = await db.functions.invoke('treeal-pix-create', {
         body: {
           payment_split_id: split.id,
           charge_id: split.charge_id,
@@ -280,7 +280,7 @@ export default function PaymentPix() {
         const splitIdToCheck = resolvedSplitId || split?.id;
         if (!splitIdToCheck) return;
 
-        const { data, error: statusError } = await supabase.functions.invoke('treeal-pix-status', {
+        const { data, error: statusError } = await db.functions.invoke('treeal-pix-status', {
           body: {
             payment_split_id: splitIdToCheck,
           },
@@ -337,7 +337,7 @@ export default function PaymentPix() {
         return;
       }
 
-      const { data, error: statusError } = await supabase.functions.invoke('treeal-pix-status', {
+      const { data, error: statusError } = await db.functions.invoke('treeal-pix-status', {
         body: {
           payment_split_id: splitIdToCheck,
         },

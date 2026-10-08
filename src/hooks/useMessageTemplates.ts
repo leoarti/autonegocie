@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 
 export interface MessageTemplate {
   id: string;
@@ -18,7 +18,7 @@ export function useMessageTemplates(companyId?: string) {
     retry: 1,
     queryFn: async () => {
       // RLS agora filtra automaticamente por company_id
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('message_templates')
         .select('id, name, variables, is_active, updated_at')
         .eq('is_active', true)

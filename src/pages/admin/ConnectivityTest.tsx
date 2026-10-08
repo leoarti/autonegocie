@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Loader2, CheckCircle2, XCircle, Radio, Play, TestTube, Info, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -84,7 +84,7 @@ export default function ConnectivityTest() {
     try {
       addLog('📤 Enviando requisição para quitaplus-token', 'info');
       
-      const { data, error } = await supabase.functions.invoke('quitaplus-token', {
+      const { data, error } = await db.functions.invoke('quitaplus-token', {
         body: {}
       });
       
@@ -161,7 +161,7 @@ export default function ConnectivityTest() {
     try {
       addLog('📤 Enviando requisição para quitaplus-simulation', 'info');
       
-      const { data, error } = await supabase.functions.invoke('quitaplus-simulation', {
+      const { data, error } = await db.functions.invoke('quitaplus-simulation', {
         body: { amountInCents: 10000 }
       });
       
@@ -234,7 +234,7 @@ export default function ConnectivityTest() {
       addLog('📤 Enviando requisição para quitaplus-prepayment', 'info');
       addLog(`📋 Payload: valor=${amountInCents} centavos, parcelas=${prepaymentForm.installments}`, 'info');
       
-      const { data, error } = await supabase.functions.invoke('quitaplus-prepayment', {
+      const { data, error } = await db.functions.invoke('quitaplus-prepayment', {
         body: {
           chargeId,
           paymentLinkId,
@@ -444,7 +444,7 @@ export default function ConnectivityTest() {
                 <div className="bg-destructive/10 p-3 rounded text-xs space-y-2 mt-3">
                   <p className="font-semibold">💡 Soluções Recomendadas:</p>
                   <ol className="list-decimal list-inside space-y-1 ml-2">
-                    <li>Solicitar whitelist dos IPs do Supabase no WAF da Cappta</li>
+                    <li>Solicitar whitelist do IP deste servidor no WAF da Cappta</li>
                     <li>Implementar proxy com IP fixo</li>
                     <li>Contatar suporte da Cappta para liberação</li>
                   </ol>

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Receipt, Banknote, Calculator, CreditCard, QrCode, AlertCircle, Building2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { CheckoutSuccessModal } from '@/components/CheckoutSuccessModal';
@@ -193,7 +193,7 @@ export default function NewCharge() {
     const fetchCompanies = async () => {
       setLoadingCompanies(true);
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from('companies')
           .select('id, name')
           .eq('is_active', true)
@@ -222,7 +222,7 @@ export default function NewCharge() {
     const checkPayoutAccount = async () => {
       setCheckingPayoutAccount(true);
       try {
-        const { data: payoutData, error: payoutError } = await supabase
+        const { data: payoutData, error: payoutError } = await db
           .from('payout_accounts')
           .select('id')
           .eq('user_id', profile.id)
@@ -392,11 +392,11 @@ export default function NewCharge() {
       const t0 = performance.now();
       console.log('[NewCharge] ⏳ Iniciando INSERT...', { company_id: targetCompanyId, payment_method: data.payment_method });
       console.log('[NewCharge] 🔑 Verificando sessão antes do INSERT...');
-      const { data: sessionCheck } = await supabase.auth.getSession();
+      const { data: sessionCheck } = await db.auth.getSession();
       console.log('[NewCharge] 🔑 Sessão:', sessionCheck?.session ? `válida (uid=${sessionCheck.session.user.id})` : 'NULA — INSERT vai falhar');
 
       console.log('[NewCharge] 📡 Disparando POST /rest/v1/charges...');
-      const { data: charge, error: chargeError } = await supabase
+      const { data: charge, error: chargeError } = await db
         .from('charges')
         .insert({
           company_id: targetCompanyId,
@@ -508,7 +508,7 @@ export default function NewCharge() {
         console.log('[NewCharge] Disparando geração de link em background...');
         
         // Não usa await — o link será gerado em segundo plano
-        supabase.functions.invoke('charge-links', {
+        db.functions.invoke('charge-links', {
           body: { chargeId: charge.id, action: 'create' }
         }).then(({ data: linkData }) => {
           if (linkData?.link?.url) {

@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { SplitModal } from '@/components/SplitModal';
 import { CombinedCheckoutSummary } from '@/components/CombinedCheckoutSummary';
-import { supabase } from '@/integrations/supabase/client';
+import { db, functionsBaseUrl } from '@/integrations/firebase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface PaymentSplit {
@@ -54,8 +54,8 @@ export default function Checkout() {
 
         // Buscar dados do pagamento E splits existentes em paralelo
         const [paymentResponse, splitsResponse] = await Promise.all([
-          fetch(`https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/public-payment-link?id=${id}`),
-          fetch(`https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/public-payment-splits?id=${id}`, {
+          fetch(`${functionsBaseUrl}/public-payment-link?id=${id}`),
+          fetch(`${functionsBaseUrl}/public-payment-splits?id=${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
@@ -266,7 +266,7 @@ export default function Checkout() {
 
       if (splits.length > 0) {
         // Usar Edge Function para criar splits (deleta antigos automaticamente)
-        const response = await fetch('https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/public-payment-splits', {
+        const response = await fetch(`${functionsBaseUrl}/public-payment-splits`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 

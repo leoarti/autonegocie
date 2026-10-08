@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { useToast } from "@/hooks/use-toast";
 import type { PaymentFormData, PaymentState } from "@/types/payment";
 
@@ -200,7 +200,7 @@ export function PaymentForm({
     try {
       console.log('[PaymentForm] Iniciando pré-pagamento Quita+...');
 
-      const { data: prePaymentData, error: prePaymentError } = await supabase.functions.invoke(
+      const { data: prePaymentData, error: prePaymentError } = await db.functions.invoke(
         'quitaplus-prepayment',
         {
           body: {
@@ -264,7 +264,7 @@ export function PaymentForm({
         console.log('[PaymentForm] ✅ Vinculando boleto ao pré-pagamento...');
 
         try {
-          const { data: linkData, error: linkError } = await supabase.functions.invoke(
+          const { data: linkData, error: linkError } = await db.functions.invoke(
             'quitaplus-link-boleto',
             {
               body: {
@@ -284,7 +284,7 @@ export function PaymentForm({
             console.error('[PaymentForm] ❌ Erro ao vincular boleto (silencioso):', errorMessage);
             
             if (chargeId) {
-              await supabase.from('charges')
+              await db.from('charges')
                 .update({ 
                   metadata: { 
                     link_boleto_error: { 

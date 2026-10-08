@@ -1,0 +1,175 @@
+name: deploy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: preview
+    if: github.event_name == 'pull_request' && hashFiles('firebase.json') != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Segredos do Firebase
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          missing=0
+          for name in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_APP_ID FIREBASE_SERVICE_ACCOUNT; do
+            if [ -z "${!name}" ]; then
+              echo "Secret ausente no repositório: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Dependências
+        run: npm ci
+
+      - name: Build do frontend
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_FUNCTIONS_URL: /api
+          VITE_FIREBASE_USE_EMULATOR: false
+
+      - name: Auth no Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Preview no Firebase Hosting
+        id: preview
+        env:
+          PROJECT: autonegocie-257c3
+        run: |
+          npx --yes firebase-tools@14 hosting:channel:deploy "pr-${{ github.event.pull_request.number }}" \
+            --expires 7d \
+            --project "$PROJECT" \
+            --non-interactive \
+            --json > preview.json
+          node --input-type=module <<'EOF'
+          import { readFileSync, writeFileSync } from "node:fs";
+          const report = JSON.parse(readFileSync("preview.json", "utf8"));
+          const sites = report.result ?? report;
+          const url = Object.values(sites).map((site) => site && site.url).find(Boolean);
+          if (!url) {
+            console.error(JSON.stringify(report));
+            process.exit(1);
+          }
+          writeFileSync("preview-url.txt", url);
+          console.log(url);
+          EOF
+
+      - name: Comentar a URL no pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          url="$(cat preview-url.txt)"
+          body="$(printf '<!-- firebase-preview -->\nPreview do Firebase Hosting: %s\n\nEste endereço expira em 7 dias e acompanha este pull request.' "$url")"
+          comment_id="$(gh api "repos/${REPO}/issues/${PR}/comments" --jq '.[] | select(.body | contains("<!-- firebase-preview -->")) | .id' | head -n 1)"
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${comment_id}" -f body="$body" >/dev/null
+          else
+            gh pr comment "$PR" --body "$body"
+          fi
+
+  production:
+    name: production
+    if: github.event_name == 'push' && hashFiles('firebase.json') != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Segredos do Firebase
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          missing=0
+          for name in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_APP_ID FIREBASE_SERVICE_ACCOUNT; do
+            if [ -z "${!name}" ]; then
+              echo "Secret ausente no repositório: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Dependências do frontend
+        run: npm ci
+
+      - name: Dependências das functions
+        if: hashFiles('functions/package-lock.json') != ''
+        run: npm ci --prefix functions
+
+      - name: Build do frontend
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_FUNCTIONS_URL: /api
+          VITE_FIREBASE_USE_EMULATOR: false
+
+      - name: Auth no Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy de produção
+        run: |
+          targets="hosting,firestore:rules,firestore:indexes"
+          if [ -f functions/package.json ]; then
+            targets="hosting,functions,firestore:rules,firestore:indexes"
+          fi
+          npx --yes firebase-tools@14 deploy \
+            --only "$targets" \
+            --project autonegocie-257c3 \
+            --non-interactive

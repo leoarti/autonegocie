@@ -1,0 +1,141 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
+    }
+
+    function role() {
+      return get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == 'admin' && profile().is_active == true;
+    }
+
+    function isOperador() {
+      return signedIn() && role() == 'operador' && profile().is_active == true;
+    }
+
+    function sameCompany(companyId) {
+      return isOperador() && profile().company_id == companyId;
+    }
+
+    function canAccessCompany(companyId) {
+      return isAdmin() || sameCompany(companyId);
+    }
+
+    match /profiles/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.is_active == true
+        && request.resource.data.company_id == null;
+      allow update: if isAdmin() || (
+        signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.is_active == resource.data.is_active
+        && request.resource.data.company_id == resource.data.company_id
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /user_roles/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid);
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.role == 'operador';
+      allow update, delete: if isAdmin();
+    }
+
+    match /companies/{companyId} {
+      allow get: if isAdmin() || (isOperador() && profile().company_id == companyId);
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /charges/{chargeId} {
+      allow get: if true;
+      allow list: if isAdmin() || (isOperador() && resource.data.company_id == profile().company_id);
+      allow create: if canAccessCompany(request.resource.data.company_id);
+      allow update: if canAccessCompany(resource.data.company_id)
+        && canAccessCompany(request.resource.data.company_id);
+      allow delete: if isAdmin();
+    }
+
+    match /charge_executions/{id} {
+      allow read: if isAdmin() || (isOperador() && resource.data.company_id == profile().company_id);
+      allow create: if canAccessCompany(request.resource.data.company_id);
+      allow update: if canAccessCompany(resource.data.company_id);
+      allow delete: if isAdmin();
+    }
+
+    match /payment_links/{id} {
+      allow get: if true;
+      allow list: if isAdmin() || (isOperador() && resource.data.company_id == profile().company_id);
+      allow create: if canAccessCompany(request.resource.data.company_id);
+      allow update: if canAccessCompany(resource.data.company_id);
+      allow delete: if isAdmin();
+    }
+
+    match /message_templates/{id} {
+      allow read: if isAdmin() || (isOperador() && resource.data.company_id == profile().company_id);
+      allow create: if signedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && canAccessCompany(request.resource.data.company_id);
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid);
+    }
+
+    match /payout_accounts/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.user_id == request.auth.uid);
+    }
+
+    match /charge_messages/{id} {
+      allow read, update: if isAdmin() || isOperador();
+      allow create: if isAdmin() || isOperador();
+      allow delete: if isAdmin();
+    }
+
+    match /payment_splits/{id} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /refund_jobs/{id} {
+      allow read: if isAdmin() || isOperador();
+      allow write: if isAdmin();
+    }
+
+    match /export_jobs/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.owner_id == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.owner_id == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /leads/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /subscriptions/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.owner_id == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{id} {
+      allow read: if isAdmin() || (isOperador() && resource.data.company_id == profile().company_id);
+      allow write: if isAdmin();
+    }
+  }
+}

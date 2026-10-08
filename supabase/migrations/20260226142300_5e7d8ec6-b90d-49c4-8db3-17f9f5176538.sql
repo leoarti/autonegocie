@@ -1,1 +1,0 @@
-ALTER TABLE public.charges ADD COLUMN IF NOT EXISTS status_locked_at TIMESTAMPTZ DEFAULT NULL;

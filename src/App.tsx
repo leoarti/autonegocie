@@ -41,10 +41,26 @@ import CompanySettings from "./pages/admin/CompanySettings";
 import CompanyManagement from "./pages/admin/CompanyManagement";
 import ConnectivityTest from "./pages/admin/ConnectivityTest";
 import { useState } from "react";
+import { firebaseConfigError } from "@/integrations/firebase/config";
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
-  
+
+  if (firebaseConfigError) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <div className="max-w-lg space-y-3">
+          <h1 className="text-2xl font-semibold">Firebase não configurado</h1>
+          <p className="text-muted-foreground">{firebaseConfigError}</p>
+          <p className="text-sm text-muted-foreground">
+            No console do Firebase, crie um app Web e copie apiKey, authDomain, projectId e appId.
+            O mesmo projectId precisa estar em .firebaserc.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

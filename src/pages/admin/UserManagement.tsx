@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +66,7 @@ export default function UserManagement() {
 
   const fetchCompanies = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('companies')
         .select('id, name')
         .eq('is_active', true)
@@ -81,14 +81,14 @@ export default function UserManagement() {
 
   const fetchProfiles = async () => {
     try {
-      const { data: profilesData, error: profilesError } = await supabase
+      const { data: profilesData, error: profilesError } = await db
         .from('profiles')
         .select('id, full_name, is_active, created_at, updated_at, company_id')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
 
-      const { data: companiesData } = await supabase
+      const { data: companiesData } = await db
         .from('companies')
         .select('id, name');
 
@@ -96,7 +96,7 @@ export default function UserManagement() {
 
       const profilesWithRoles = await Promise.all(
         (profilesData || []).map(async (profile) => {
-          const { data: roleData } = await supabase
+          const { data: roleData } = await db
             .from('user_roles')
             .select('role')
             .eq('user_id', profile.id)
@@ -195,7 +195,7 @@ export default function UserManagement() {
     try {
       setIsCreating(true);
 
-      const { data, error } = await supabase.functions.invoke('create-user-admin', {
+      const { data, error } = await db.functions.invoke('create-user-admin', {
         body: newUserData
       });
 
@@ -230,16 +230,16 @@ export default function UserManagement() {
   const updateProfile = async (id: string, updates: Partial<Profile>) => {
     try {
       if (updates.role) {
-        const { data: existingRole } = await supabase
+        const { data: existingRole } = await db
           .from('user_roles')
           .select('id')
           .eq('user_id', id)
           .maybeSingle();
 
         if (existingRole) {
-          await supabase.from('user_roles').update({ role: updates.role }).eq('user_id', id);
+          await db.from('user_roles').update({ role: updates.role }).eq('user_id', id);
         } else {
-          await supabase.from('user_roles').insert({ user_id: id, role: updates.role });
+          await db.from('user_roles').insert({ user_id: id, role: updates.role });
         }
         
         const { role, ...profileUpdates } = updates;
@@ -247,7 +247,7 @@ export default function UserManagement() {
       }
 
       if (Object.keys(updates).length > 0) {
-        await supabase.from('profiles').update(updates).eq('id', id);
+        await db.from('profiles').update(updates).eq('id', id);
       }
 
       toast({ title: "Usuário atualizado" });
@@ -259,7 +259,7 @@ export default function UserManagement() {
 
   const resetPassword = async (email: string) => {
     try {
-      await supabase.auth.resetPasswordForEmail(email, {
+      await db.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       toast({ title: "Email enviado", description: "Link de reset enviado para o usuário" });
@@ -270,8 +270,8 @@ export default function UserManagement() {
 
   const deleteUser = async (userId: string, userName: string) => {
     try {
-      await supabase.from('user_roles').delete().eq('user_id', userId);
-      await supabase.from('profiles').delete().eq('id', userId);
+      await db.from('user_roles').delete().eq('user_id', userId);
+      await db.from('profiles').delete().eq('id', userId);
       toast({ title: "Usuário removido", description: `${userName} foi removido` });
       fetchProfiles();
     } catch (error: any) {

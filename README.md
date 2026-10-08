@@ -13,7 +13,7 @@ Sistema completo de pagamentos integrado com a API QuitaMais para processamento 
 - **Formulário completo**: Captura de dados do pagador e informações do cartão de crédito
 - **Validação em tempo real**: CPF/CNPJ, telefone, e-mail, dados do cartão
 - **Integração QuitaMais**: Processamento via API oficial da Cappta
-- **Armazenamento seguro**: Histórico de transações no Supabase
+- **Armazenamento seguro**: Histórico de transações no Firestore
 - **Interface responsiva**: Design otimizado para conversão
 
 ### Dados Capturados
@@ -90,19 +90,21 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-- Supabase (Backend/Database)
+- Firebase (Auth e Firestore)
 - QuitaMais API (Payment Processing)
 
 ## ⚠️ Configuração Necessária
 
-### 1. Secrets do Supabase
-Os seguintes secrets já foram configurados no Supabase:
+### 1. Credenciais QuitaMais
+Defina no ambiente do servidor em `functions/`:
 - `QUITA_MAIS_MERCHANT_ID` - ID do comerciante QuitaMais
 - `QUITA_MAIS_CREDITOR_NAME` - Nome do credor
 - `QUITA_MAIS_CREDITOR_DOCUMENT` - Documento do credor
 
-### 2. Tabela de Transações
-A tabela de transações já foi criada no banco Supabase com os seguintes campos:
+O admin também pode gravar esses valores em Firestore (`app_settings/quita_mais`) pela tela de configurações.
+
+### 2. Dados das transações
+As cobranças e transações ficam no Firestore, com campos como:
 
 - `transaction_id` - ID único da transação
 - `merchant_id` - ID do merchant QuitaMais

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -783,7 +783,7 @@ export default function ChargeHistory() {
     if (!isAdmin) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('companies')
         .select('id, name')
         .eq('is_active', true)
@@ -808,9 +808,9 @@ export default function ChargeHistory() {
     try {
       // Executar sincronizações em paralelo
       const [paymentResult, pixResult, cardResult] = await Promise.allSettled([
-        supabase.functions.invoke('sync-payment-status'),
-        supabase.functions.invoke('sync-mercadopago-status'), // AbacatePay legado — substituir por sync-treeal-status quando criado
-        supabase.functions.invoke('sync-card-status'),
+        db.functions.invoke('sync-payment-status'),
+        db.functions.invoke('sync-mercadopago-status'), // AbacatePay legado — substituir por sync-treeal-status quando criado
+        db.functions.invoke('sync-card-status'),
       ]);
 
       // Coletar IDs de charges que foram atualizados
@@ -890,7 +890,7 @@ export default function ChargeHistory() {
 
   const processCharge = async (chargeId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('process-charge', {
+      const { data, error } = await db.functions.invoke('process-charge', {
         body: { chargeId, immediate: true }
       });
 
@@ -925,7 +925,7 @@ export default function ChargeHistory() {
       toast({ title: "Verificando status...", description: "Aguarde..." });
       
       // ✅ PRIMEIRO: Verificar status atual na API Cappta
-      const { data: statusData } = await supabase.functions.invoke('quitaplus-prepayment-status', {
+      const { data: statusData } = await db.functions.invoke('quitaplus-prepayment-status', {
         body: { prePaymentKey: charge.pre_payment_key }
       });
 
@@ -939,7 +939,7 @@ export default function ChargeHistory() {
         });
         
         // Atualizar status no banco
-        await supabase.from('charges')
+        await db.from('charges')
           .update({ 
             status: 'boleto_linked',
             boleto_linked_at: new Date().toISOString(),
@@ -964,7 +964,7 @@ export default function ChargeHistory() {
       // ✅ SEGUNDO: Tentar vincular boleto
       toast({ title: "Vinculando boleto...", description: "Aguarde..." });
       
-      const { data, error } = await supabase.functions.invoke('quitaplus-link-boleto', {
+      const { data, error } = await db.functions.invoke('quitaplus-link-boleto', {
         body: {
           prePaymentKey: charge.pre_payment_key,
           paymentLinkId: charge.id,
@@ -990,7 +990,7 @@ export default function ChargeHistory() {
         });
         
         // Atualizar status da charge para boleto_linked e limpar erro
-        await supabase.from('charges')
+        await db.from('charges')
           .update({ 
             status: 'boleto_linked',
             boleto_linked_at: new Date().toISOString(),
@@ -1041,7 +1041,7 @@ export default function ChargeHistory() {
         setTimeout(() => reject(new Error('TIMEOUT')), 20000)
       );
 
-      const invokePromise = supabase.functions.invoke('admin-link-boleto', {
+      const invokePromise = db.functions.invoke('admin-link-boleto', {
         body: {
           chargeId: charge.id,
           linhaDigitavel: sanitized,
@@ -1672,7 +1672,7 @@ export default function ChargeHistory() {
                                 
                                 setChangingCompany(true);
                                 try {
-                                  const { error } = await supabase
+                                  const { error } = await db
                                     .from('charges')
                                     .update({ company_id: newCompanyId })
                                     .eq('id', selectedCharge.id);
@@ -1775,7 +1775,7 @@ export default function ChargeHistory() {
                           <Button size="sm" onClick={async () => {
                             setSavingStatus(true);
                             try {
-                              const { error } = await supabase
+                              const { error } = await db
                                 .from('charges')
                                 .update({ 
                                   status: newManualStatus as any,
@@ -1876,7 +1876,7 @@ export default function ChargeHistory() {
                                }
 
                                // Update charge
-                               const { error } = await supabase
+                               const { error } = await db
                                  .from('charges')
                                  .update({
                                    payment_method: newPaymentMethod,
@@ -1890,7 +1890,7 @@ export default function ChargeHistory() {
                                // Delete pending splits for removed method
                                if (currentMethod === 'cartao_pix' && newPaymentMethod !== 'cartao_pix') {
                                  const removedMethod = newPaymentMethod === 'pix' ? 'CARD' : 'PIX';
-                                 await supabase
+                                 await db
                                    .from('payment_splits')
                                    .delete()
                                    .eq('charge_id', selectedCharge.id)

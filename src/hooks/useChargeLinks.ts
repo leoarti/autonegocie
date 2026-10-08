@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { toast } from 'sonner';
 
 interface PaymentLink {
@@ -34,7 +34,7 @@ export function useChargeLinks() {
     queryFn: async () => {
       try {
         // First check DB
-        const { data: dbData } = await supabase
+        const { data: dbData } = await db
           .from('charges')
           .select('checkout_url, checkout_link_id')
           .eq('id', chargeId)
@@ -51,7 +51,7 @@ export function useChargeLinks() {
         );
 
         const edgeResult = await Promise.race([
-          supabase.functions.invoke('charge-links', {
+          db.functions.invoke('charge-links', {
             body: { chargeId, action: 'get' }
           }),
           timeoutPromise
@@ -71,7 +71,7 @@ export function useChargeLinks() {
         }
 
         // Save to DB
-        await supabase
+        await db
           .from('charges')
           .update({
             checkout_url: data.link.url,
@@ -91,7 +91,7 @@ export function useChargeLinks() {
 
   const generateLinkMutation = useMutation({
     mutationFn: async (chargeId: string) => {
-      const { data, error } = await supabase.functions.invoke('charge-links', {
+      const { data, error } = await db.functions.invoke('charge-links', {
         body: { chargeId, action: 'create' }
       });
 
@@ -146,7 +146,7 @@ export function useChargeLinks() {
     retry: 1,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('recurrences-manager', {
+      const { data, error } = await db.functions.invoke('recurrences-manager', {
         body: { action: 'get_executions', charge_id: chargeId }
       });
 

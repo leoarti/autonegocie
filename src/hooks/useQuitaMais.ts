@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { 
   PaymentLinkRequest, 
   PaymentLinkResponse, 
@@ -29,7 +29,7 @@ export const useQuitaMais = () => {
 
     try {
       // Test authentication with QuitaPlus API via new token endpoint
-      const { data: tokenData, error } = await supabase.functions.invoke('quitaplus-token');
+      const { data: tokenData, error } = await db.functions.invoke('quitaplus-token');
 
       if (error) {
         throw new Error(error.message || 'Erro ao testar conectividade');
@@ -75,7 +75,7 @@ export const useQuitaMais = () => {
 
     try {
       // Send data directly in the expected structure
-      const { data: paymentLink, error } = await supabase.functions.invoke('quitaplus-proxy', {
+      const { data: paymentLink, error } = await db.functions.invoke('quitaplus-proxy', {
         body: {
           orderType, // for path normalization
           amount: request.amount, // for EXTRAS_TO_STORE
@@ -116,10 +116,10 @@ export const useQuitaMais = () => {
       const extrasToStore = paymentLink._extrasToStore || {};
       
       // Get company_id from user profile
-      const { data: profile } = await supabase
+      const { data: profile } = await db
         .from('profiles')
         .select('company_id')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('id', (await db.auth.getUser()).data.user?.id)
         .single();
 
       if (!profile?.company_id) {
@@ -127,7 +127,7 @@ export const useQuitaMais = () => {
       }
       
       // Save complete data to database using both API response and EXTRAS_TO_STORE
-      const { data: savedLink, error: saveError } = await supabase
+      const { data: savedLink, error: saveError } = await db
         .from('payment_links')
         .insert({
           link_id: paymentLink.linkId || `link_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -212,7 +212,7 @@ export const useQuitaMais = () => {
 
     try {
       // Use QuitaPlus proxy to search for payment link (no direct API calls)
-      const { data: linkDetails, error } = await supabase.functions.invoke('quitaplus-proxy', {
+      const { data: linkDetails, error } = await db.functions.invoke('quitaplus-proxy', {
         body: {
           targetPath: `payment/order/${linkId}`,
           httpMethod: 'GET'
@@ -280,7 +280,7 @@ export const useQuitaMais = () => {
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      const { data: links, error } = await supabase
+      const { data: links, error } = await db
         .from('payment_links')
         .select('*')
         .order('created_at', { ascending: false });

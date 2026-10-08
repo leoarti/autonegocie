@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import type { AuthSession as Session, AuthUser as User } from '@/integrations/firebase/types';
+import { db } from '@/integrations/firebase/client';
+import { auth } from '@/integrations/firebase/config';
 
 export interface Profile {
   id: string;
   full_name: string;
   role: 'admin' | 'operador';
   is_active: boolean;
-  company_id: string;
+  company_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,40 +33,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const readProfile = (userId: string) => db
+    .from('profiles')
+    .select('id, full_name, is_active, company_id, created_at, updated_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const readRole = async (userId: string) => {
+    const byId = await db
+      .from('user_roles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (byId.data?.role) return byId;
+
+    const byUser = await db
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (byUser.data?.role) return byUser;
+    return byId.error ? byId : byUser;
+  };
+
+  const createOwnProfile = async (userId: string) => {
+    const now = new Date().toISOString();
+    const current = auth.currentUser;
+    const fullName = current?.displayName?.trim()
+      || current?.email?.split('@')[0]
+      || 'Usuário';
+    const row = {
+      id: userId,
+      full_name: fullName,
+      is_active: true,
+      company_id: null,
+      created_at: now,
+      updated_at: now,
+    };
+
+    const { error } = await db.from('profiles').insert(row);
+    if (!error) return row;
+
+    const again = await readProfile(userId);
+    if (again.data) return again.data;
+
+    console.error('❌ [AuthContext] Erro ao criar profile:', error.message);
+    return null;
+  };
+
+  const ensureRole = async (userId: string, existing: string | undefined) => {
+    if (existing === 'admin' || existing === 'operador') return existing;
+
+    const now = new Date().toISOString();
+    const { error } = await db.from('user_roles').insert({
+      id: userId,
+      user_id: userId,
+      role: 'operador',
+      created_at: now,
+    });
+    if (error) {
+      console.warn('⚠️ [AuthContext] Erro ao criar role (usando operador):', error.message);
+    }
+    return 'operador' as const;
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
-      // Buscar profile e role em paralelo (Promise.all reduz latência de ~800ms para ~400ms)
       const [profileResult, roleResult] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, full_name, is_active, company_id, created_at, updated_at')
-          .eq('id', userId)
-          .single(),
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .maybeSingle(),
+        readProfile(userId),
+        readRole(userId),
       ]);
 
       if (profileResult.error) {
-        console.error('❌ [AuthContext] Erro ao buscar profile:', profileResult.error);
+        console.error('❌ [AuthContext] Erro ao buscar profile:', profileResult.error.message);
         return null;
       }
 
-      if (!profileResult.data) {
-        console.error('❌ [AuthContext] Profile data está vazio/null');
-        return null;
-      }
+      const profileData = profileResult.data ?? await createOwnProfile(userId);
+      if (!profileData) return null;
 
       if (roleResult.error) {
-        console.warn('⚠️ [AuthContext] Erro ao buscar role (usando default):', roleResult.error);
+        console.warn('⚠️ [AuthContext] Erro ao buscar role (usando default):', roleResult.error.message);
       }
 
-      const role = roleResult.data?.role || 'operador';
+      const role = await ensureRole(userId, roleResult.data?.role);
 
       const profile: Profile = {
-        ...profileResult.data,
+        ...profileData,
         role,
       };
 
@@ -86,9 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Controle de corrida: ignora respostas de fetchProfile para sessões antigas
     let currentUserId: string | null = null;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = db.auth.onAuthStateChange(
       (event, session) => {
-        // ⚠️ NUNCA usar async aqui — causa deadlock no client Supabase
+        // O callback do Firebase Auth não pode ser async.
         // (queries ficam pendentes esperando o callback terminar)
         console.log('[AuthContext] event:', event, '| session:', session?.user?.id ?? 'null');
 
@@ -110,13 +164,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ) {
           const userId = session.user.id;
           currentUserId = userId;
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            setLoading(true);
+          }
           setSession(session);
           setUser(session.user);
 
           // Disparar fetch de perfil FORA do callback para não bloquear o auth client
           setTimeout(() => {
-            fetchProfile(userId).then((userProfile) => {
-              // Só aplica se a sessão ainda é a mesma (controle de corrida)
+            const loadProfile = async () => {
+              for (let attempt = 0; attempt < 3; attempt += 1) {
+                const userProfile = await fetchProfile(userId);
+                if (userProfile || currentUserId !== userId) return userProfile;
+                await new Promise((resolve) => setTimeout(resolve, 300));
+              }
+              return null;
+            };
+
+            loadProfile().then((userProfile) => {
               if (currentUserId === userId) {
                 setProfile(userProfile);
                 setLoading(false);
@@ -131,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await db.auth.signInWithPassword({
       email,
       password,
     });
@@ -141,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { error } = await db.auth.signUp({
       email,
       password,
       options: {
@@ -160,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .filter(k => k.startsWith('sb-'))
       .forEach(k => localStorage.removeItem(k));
 
-    const { error } = await supabase.auth.signOut();
+    const { error } = await db.auth.signOut();
 
     if (error) {
       console.warn('[AuthContext] signOut com erro (esperado se sessão já expirou):', error.message);

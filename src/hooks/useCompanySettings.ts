@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { useRef, useEffect, useCallback } from 'react';
 
 export interface CompanySettings {
@@ -19,8 +19,7 @@ export function useCompanySettings() {
   const fetchSettings = useCallback(async (): Promise<CompanySettings> => {
     if (!user) throw new Error('User not authenticated');
 
-    // O Supabase client JS já inclui o token automaticamente em functions.invoke
-    const { data, error } = await supabase.functions.invoke<CompanySettings>('company-settings', {
+    const { data, error } = await db.functions.invoke<CompanySettings>('company-settings', {
       body: {},
     });
 

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { Loader2, Rocket, Lock } from "lucide-react";
 import { z } from "zod";
 
@@ -66,7 +66,7 @@ export function LeadCaptureModal({ open, onOpenChange }: LeadCaptureModalProps) 
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.from("leads").insert({
+      const { error } = await db.from("leads").insert({
         name: formData.name,
         email: formData.email,
         phone: formData.phone || null,

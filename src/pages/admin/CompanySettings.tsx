@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Eye, EyeOff, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
+import { Save, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 export default function CompanySettings() {
@@ -55,7 +55,7 @@ export default function CompanySettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('update-company-settings', {
+      const { data, error } = await db.functions.invoke('update-company-settings', {
         body: formData,
       });
 
@@ -69,36 +69,10 @@ export default function CompanySettings() {
         return;
       }
 
-      // Mostrar instruções se retornadas
-      if (data?.instructions) {
-        toast({
-          title: 'Instruções para aplicar alterações',
-          description: (
-            <div className="space-y-2 text-sm">
-              <p className="font-medium">{data.message}</p>
-              <ol className="list-decimal list-inside space-y-1 mt-2">
-                {data.instructions.slice(1).map((instruction: string, idx: number) => (
-                  <li key={idx} className="text-xs">{instruction}</li>
-                ))}
-              </ol>
-              <a 
-                href={data.instructions[0].split(': ')[1]} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary hover:underline mt-2"
-              >
-                Abrir Supabase Dashboard <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          ),
-          duration: 10000,
-        });
-      } else {
-        toast({
-          title: 'Configurações salvas',
-          description: 'As configurações foram atualizadas com sucesso.',
-        });
-      }
+      toast({
+        title: 'Configurações salvas',
+        description: data?.message || 'As configurações foram atualizadas com sucesso.',
+      });
 
       // Recarregar configurações (will refetch automatically via React Query)
       setFormData(settings || { creditor_document: '', creditor_name: '', merchant_id: '' });

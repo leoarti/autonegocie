@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageSquare, Send, RefreshCw, Eye, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 
@@ -57,7 +57,7 @@ export default function MessageQueue() {
     setLoading(true);
     try {
       // Carregar mensagens primeiro
-      let query = supabase
+      let query = db
         .from('charge_messages')
         .select('*')
         .order('created_at', { ascending: false })
@@ -72,7 +72,7 @@ export default function MessageQueue() {
 
       // Buscar dados das cobranças relacionadas
       const chargeIds = messagesData?.map(m => m.charge_id) || [];
-      const { data: chargesData, error: chargesError } = await supabase
+      const { data: chargesData, error: chargesError } = await db
         .from('charges')
         .select('id, payer_name, amount, description')
         .in('id', chargeIds);
@@ -125,7 +125,7 @@ export default function MessageQueue() {
         }
       };
 
-      const { error } = await supabase
+      const { error } = await db
         .from('charge_messages')
         .update(updateData)
         .eq('id', messageId);

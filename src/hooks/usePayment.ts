@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { functionsBaseUrl } from '@/integrations/firebase/client';
 import type { PaymentFormData, PaymentResponse, PaymentState } from '@/types/payment';
 
 export function usePayment() {
@@ -25,12 +26,10 @@ export function usePayment() {
     });
 
     try {
-      // Chama a edge function do Supabase
-      const response = await fetch('https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/process-payment', {
+      const response = await fetch(`${functionsBaseUrl}/process-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzYmJya2JleXhzcXFqcWhwdHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODk5NTQsImV4cCI6MjA3Mzg2NTk1NH0.I5l0SDwsAN_rsSdoZiE9GAndkn3tkqX44O5ypu0cu7w`,
         },
         body: JSON.stringify({
           ...formData,

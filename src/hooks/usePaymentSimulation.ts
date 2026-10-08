@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 
 export interface InstallmentCondition {
   installments: number;
@@ -23,7 +23,7 @@ export function usePaymentSimulation(amountCents: number | null) {
         throw new Error('Valor inválido para simulação');
       }
 
-      const { data, error } = await supabase.functions.invoke('quitaplus-simulation', {
+      const { data, error } = await db.functions.invoke('quitaplus-simulation', {
         body: { amountInCents: amountCents }
       });
 

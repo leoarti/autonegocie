@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Clock, AlertTriangle, RefreshCw, DollarSign, CheckCircle, XCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { toast } from '@/hooks/use-toast';
 import { format, addHours, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -70,7 +70,7 @@ export function ChargeRefundTimeline({ chargeId, hasBoletoLink }: ChargeRefundTi
       setLoading(true);
       
       // Load splits
-      const { data: splitsData, error: splitsError } = await supabase
+      const { data: splitsData, error: splitsError } = await db
         .from('payment_splits')
         .select('*')
         .eq('charge_id', chargeId)
@@ -80,7 +80,7 @@ export function ChargeRefundTimeline({ chargeId, hasBoletoLink }: ChargeRefundTi
       setSplits(splitsData || []);
 
       // Load refund jobs
-      const { data: refundData, error: refundError } = await supabase
+      const { data: refundData, error: refundError } = await db
         .from('refund_jobs')
         .select('*')
         .eq('charge_id', chargeId)

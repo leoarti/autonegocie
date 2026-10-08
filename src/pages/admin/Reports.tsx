@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -100,7 +100,7 @@ export default function Reports() {
         if (value) params.append(key, value);
       });
 
-      const { data, error } = await supabase.functions.invoke(`admin-reports/summary?${params.toString()}`, {
+      const { data, error } = await db.functions.invoke(`admin-reports/summary?${params.toString()}`, {
         method: 'GET',
       });
 
@@ -128,7 +128,7 @@ export default function Reports() {
         if (value) params.append(key, value);
       });
 
-      const { data, error } = await supabase.functions.invoke(`admin-reports/table?${params.toString()}`, {
+      const { data, error } = await db.functions.invoke(`admin-reports/table?${params.toString()}`, {
         method: 'GET',
       });
 
@@ -147,7 +147,7 @@ export default function Reports() {
 
   const exportData = async (entity: string, format: 'CSV' | 'XLSX') => {
     try {
-      const { data, error } = await supabase.functions.invoke('admin-reports/export', {
+      const { data, error } = await db.functions.invoke('admin-reports/export', {
         body: {
           entity,
           format,
@@ -175,7 +175,7 @@ export default function Reports() {
 
   const loadExportJobs = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('export_jobs')
         .select('*')
         .order('created_at', { ascending: false })
@@ -188,7 +188,7 @@ export default function Reports() {
         (data || []).map(async (job) => {
           if (job.status === 'DONE') {
             try {
-              const { data: jobData } = await supabase.functions.invoke(`admin-reports/export/${job.id}`);
+              const { data: jobData } = await db.functions.invoke(`admin-reports/export/${job.id}`);
               return { ...job, download_url: jobData?.download_url };
             } catch {
               return job;
@@ -206,7 +206,7 @@ export default function Reports() {
 
   const runExportWorker = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('export-worker', {
+      const { data, error } = await db.functions.invoke('export-worker', {
         body: {}
       });
 

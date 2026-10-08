@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, QrCode, AlertCircle, Loader2, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { CardInstallmentSelector } from '@/components/CardInstallmentSelector';
 import {
   toCents,
@@ -212,7 +212,7 @@ export function SplitModal({ isOpen, onClose, totalCents, chargeId, paymentLinkI
         });
       }
 
-      const { error: dbError } = await supabase
+      const { error: dbError } = await db
         .from('payment_splits')
         .insert(splitsToInsert);
 

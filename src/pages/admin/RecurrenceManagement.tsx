@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,7 +58,7 @@ export default function RecurrenceManagement() {
       setLoading(true);
       setPlannerStats(null);
       
-      const { data, error } = await supabase.functions.invoke('recurrences-manager', {
+      const { data, error } = await db.functions.invoke('recurrences-manager', {
         body: { 
           action: 'plan',
           horizon_days: parseInt(horizonDays)
@@ -92,7 +92,7 @@ export default function RecurrenceManagement() {
       setLoading(true);
       setDispatcherStats(null);
       
-      const { data, error } = await supabase.functions.invoke('recurrences-manager', {
+      const { data, error } = await db.functions.invoke('recurrences-manager', {
         body: { 
           action: 'dispatch',
           limit: parseInt(dispatchLimit)
@@ -130,7 +130,7 @@ export default function RecurrenceManagement() {
 
   const loadRecentExecutions = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('charge_executions')
         .select(`
           *,
@@ -342,7 +342,7 @@ export default function RecurrenceManagement() {
               </Button>
               
               <Button 
-                onClick={() => supabase.functions.invoke('recurring-charges-cron')} 
+                onClick={() => db.functions.invoke('recurring-charges-cron')} 
                 variant="outline"
                 disabled={loading}
               >

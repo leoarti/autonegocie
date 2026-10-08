@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { PaymentForm } from '@/components/PaymentForm';
 import { CheckoutOptionCard } from '@/components/CheckoutOptionCard';
-import { supabase } from '@/integrations/supabase/client';
+import { db, functionsBaseUrl } from '@/integrations/firebase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { mapSimulationToPaymentOptions, findClosestInstallment } from '@/lib/checkout-utils';
@@ -62,7 +62,7 @@ export default function PaymentDirect() {
         setLoading(true);
 
         const response = await fetch(
-          `https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/public-payment-link?id=${id}`
+          `${functionsBaseUrl}/public-payment-link?id=${id}`
         );
 
         if (!response.ok) {
@@ -90,7 +90,7 @@ export default function PaymentDirect() {
 
         // Verificar splits existentes para bloquear reentrada
         const chargeId = data.charge_id || data.id;
-        const { data: existingSplits } = await supabase
+        const { data: existingSplits } = await db
           .from('payment_splits')
           .select('status, method')
           .eq('charge_id', chargeId);
@@ -141,7 +141,7 @@ export default function PaymentDirect() {
                 : selectedOption.totalCents)
           : 0;
 
-        const { data, error } = await supabase.functions.invoke('conclude-card-payment', {
+        const { data, error } = await db.functions.invoke('conclude-card-payment', {
           body: {
             payment_link_id: charge.id,
             amount_cents: charge.amount_cents, // ✅ Usar valor original

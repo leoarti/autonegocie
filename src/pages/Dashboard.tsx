@@ -11,7 +11,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { SimulatorModal } from '@/components/SimulatorModal';
 import { 
   DashboardShell, 
@@ -63,18 +63,18 @@ export default function Dashboard() {
     const loadAll = async () => {
       try {
         const [chargesRes, splitsRes, companyRes] = await Promise.all([
-          supabase
+          db
             .from('charges')
             .select('id, status, amount, created_at')
             .gte('created_at', startOfMonth)
             .lte('created_at', endOfMonth),
-          supabase
+          db
             .from('payment_splits')
             .select('charge_id, method, status, amount_cents')
             .not('charge_id', 'is', null)
             .gte('created_at', startOfMonth)
             .lte('created_at', endOfMonth),
-          supabase
+          db
             .from('companies')
             .select('id, name')
             .eq('id', profile.company_id)
@@ -103,13 +103,13 @@ export default function Dashboard() {
           .filter(c => c.status === 'completed')
           .reduce((sum, c) => sum + c.amount, 0);
 
-        const chargeGroups = splits.reduce((acc, split) => {
+        const chargeGroups: Record<string, any[]> = splits.reduce((acc, split) => {
           const chargeId = split.charge_id;
           if (!chargeId) return acc;
           if (!acc[chargeId]) acc[chargeId] = [];
           acc[chargeId].push(split);
           return acc;
-        }, {} as Record<string, typeof splits>);
+        }, {} as Record<string, any[]>);
 
         const combinedPending = Object.values(chargeGroups).filter(splitGroup => {
           if (!splitGroup || splitGroup.length <= 1) return false;

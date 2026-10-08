@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Edit, Trash2, MessageSquare, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Layout } from "@/components/Layout";
@@ -84,7 +84,7 @@ export default function MessageTemplates() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('message_templates')
         .select('*')
         .eq('user_id', profile.id)
@@ -124,7 +124,7 @@ export default function MessageTemplates() {
 
       if (editingTemplate) {
         // Update existing template
-        const { error } = await supabase
+        const { error } = await db
           .from('message_templates')
           .update(templateData)
           .eq('id', editingTemplate.id);
@@ -137,7 +137,7 @@ export default function MessageTemplates() {
         });
       } else {
         // Create new template
-        const { error } = await supabase
+        const { error } = await db
           .from('message_templates')
           .insert(templateData);
 
@@ -178,7 +178,7 @@ export default function MessageTemplates() {
     if (!confirm("Tem certeza que deseja excluir este template?")) return;
     
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from('message_templates')
         .update({ is_active: false })
         .eq('id', templateId);

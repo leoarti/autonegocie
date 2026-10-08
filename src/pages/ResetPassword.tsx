@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,18 +30,20 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [validToken, setValidToken] = useState(false);
+  const [oobCode] = useState(() => new URLSearchParams(window.location.search).get('oobCode'));
+  const [validToken, setValidToken] = useState(Boolean(oobCode));
 
   useEffect(() => {
-    // Check if we have a valid recovery session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    if (oobCode) return;
+
+    db.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setValidToken(true);
       } else {
         setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
       }
     });
-  }, []);
+  }, [oobCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,9 +57,11 @@ export default function ResetPassword() {
         confirmPassword: confirmPassword.trim(),
       });
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: validated.password,
-      });
+      const { error: updateError } = oobCode
+        ? await db.auth.confirmPasswordReset(oobCode, validated.password)
+        : await db.auth.updateUser({
+            password: validated.password,
+          });
 
       if (updateError) {
         throw updateError;

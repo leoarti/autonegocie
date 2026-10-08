@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Shield, Check, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from '@/integrations/firebase/client';
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -19,7 +19,7 @@ export default function CreateAdmin() {
     setError("");
     
     try {
-      const { data, error } = await supabase.functions.invoke('create-admin-user');
+      const { data, error } = await db.functions.invoke('create-admin-user');
       
       if (error) throw error;
       

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, ArrowLeft, History, Printer, RefreshCw, Calendar, Download, QrCode, CreditCard, Phone, Mail, Building2, XCircle, AlertTriangle, Clock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db, functionsBaseUrl } from '@/integrations/firebase/client';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -191,13 +191,9 @@ export default function ThankYou() {
     try {
       setLoading(true);
       
-      const functionUrl = `https://gsbbrkbeyxsqqjqhptrn.supabase.co/functions/v1/thank-you-summary?${queryParams.toString()}`;
+      const functionUrl = `${functionsBaseUrl}/thank-you-summary?${queryParams.toString()}`;
       const response = await fetch(functionUrl, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzYmJya2JleXhzcXFqcWhwdHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyODk5NTQsImV4cCI6MjA3Mzg2NTk1NH0.I5l0SDwsAN_rsSdoZiE9GAndkn3tkqX44O5ypu0cu7w`,
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {

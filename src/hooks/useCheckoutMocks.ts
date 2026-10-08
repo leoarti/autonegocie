@@ -1,5 +1,5 @@
 import { CheckoutCharge } from './useCheckoutStore';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
 
 // Mock data for charges (fallback only)
 const mockCharges: Record<string, CheckoutCharge> = {
@@ -26,7 +26,7 @@ const mockCharges: Record<string, CheckoutCharge> = {
 export const getCheckoutCharge = async (id: string): Promise<CheckoutCharge | null> => {
   // Try to fetch from database first
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('charges')
       .select('id, amount, description, payer_name')
       .eq('id', id)
