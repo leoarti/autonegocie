@@ -1,58 +1,58 @@
 # Sistema de Cobrança Integrado ao Quita+
 
-Sistema completo de cobrança com autenticação RBAC, cobranças pontuais e recorrentes integradas ao Quita+.
+Sistema completo de cobrança com autenticação por papéis, cobranças pontuais e recorrentes integradas ao Quita+.
 
-## 🚀 Funcionalidades
+## Funcionalidades
 
-### Autenticação e Autorização
-- ✅ Login/senha com hash bcrypt (Supabase Auth)
-- ✅ RBAC: Admin/Operador
-- ✅ Clientes acessam sem login
-- ✅ Cookies httpOnly e CSRF protection (Supabase nativo)
-- ✅ Rate limiting (Supabase nativo)
+### Autenticação e autorização
+- Login e senha com hash bcrypt (Supabase Auth)
+- Controle de acesso por papel: administrador e operador
+- Clientes acessam sem login
+- Cookies httpOnly e proteção contra CSRF (nativo do Supabase)
+- Limite de taxa de requisições (nativo do Supabase)
 
 ### Cobranças
-- ✅ **Pontuais**: Cobrança única com link instantâneo
-- ✅ **Recorrentes**: Diária, semanal, quinzenal, mensal, semestral, anual
-- ✅ Configuração de parcelas e maskFee/installments
-- ✅ Integração server-side com Quita+
+- **Pontuais**: cobrança única com link instantâneo
+- **Recorrentes**: diária, semanal, quinzenal, mensal, semestral, anual
+- Configuração de parcelas e dos campos `maskFee` e `installments`
+- Integração no servidor com o Quita+
 
-### Processamento Automático
-- ✅ Cron job para recorrências (timezone America/Sao_Paulo)
-- ✅ Controle de idempotência
-- ✅ Logs completos de auditoria
-- ✅ Retry automático com exponential backoff
+### Processamento automático
+- Tarefa agendada para recorrências (fuso `America/Sao_Paulo`)
+- Controle de idempotência
+- Registros completos de auditoria
+- Nova tentativa automática com espera exponencial
 
-## 🏗️ Arquitetura
+## Arquitetura
 
-### Banco de Dados
-- `profiles`: Usuários com roles (admin/operador)
-- `charges`: Cobranças pontuais e recorrentes
-- `charge_executions`: Log de cada tentativa de processamento
+### Banco de dados
+- `profiles`: usuários com papéis (administrador/operador)
+- `charges`: cobranças pontuais e recorrentes
+- `charge_executions`: registro de cada tentativa de processamento
 
-### Edge Functions
-- `quitaplus-proxy`: Integração com API Quita+
-- `process-charge`: Processa cobrança individual
-- `recurring-charges-cron`: Job automático para recorrências
+### Funções de borda
+- `quitaplus-proxy`: integração com a API Quita+
+- `process-charge`: processa uma cobrança individual
+- `recurring-charges-cron`: tarefa automática para recorrências
 
-### Frontend
-- Página pública: Demo de pagamento
-- Dashboard autenticado: Gestão de cobranças
-- RBAC: Admin gerencia usuários, Operador cria cobranças
+### Interface
+- Página pública: demonstração de pagamento
+- Painel autenticado: gestão de cobranças
+- Papéis: o administrador gerencia usuários; o operador cria cobranças
 
-## 🔧 Setup
+## Configuração
 
-### 1. Configurar Secrets no Supabase
+### 1. Configurar segredos no Supabase
 ```bash
 # Já configurados:
 - QUITAPLUS_CLIENT_ID
-- QUITAPLUS_CLIENT_SECRET  
+- QUITAPLUS_CLIENT_SECRET
 - QUITA_MAIS_MERCHANT_ID
 ```
 
-### 2. Configurar Cron Job
+### 2. Configurar a tarefa agendada
 ```sql
--- Executar no SQL Editor do Supabase
+-- Executar no editor SQL do Supabase
 SELECT cron.schedule(
   'recurring-charges-processor',
   '*/15 * * * *', -- A cada 15 minutos
@@ -66,28 +66,28 @@ SELECT cron.schedule(
 );
 ```
 
-### 3. Criar primeiro usuário Admin
+### 3. Criar o primeiro usuário administrador
 ```sql
--- Após primeiro signup, promover a admin:
+-- Após o primeiro cadastro, promover a administrador:
 UPDATE profiles SET role = 'admin' WHERE email = 'seu@email.com';
 ```
 
-## 🧪 Testes
+## Testes
 
-### Cobrança Pontual
-1. Login como operador/admin
-2. Dashboard → Nova Cobrança
-3. Preencher dados do pagador
+### Cobrança pontual
+1. Entre como operador ou administrador
+2. Painel → Nova cobrança
+3. Preencha os dados do pagador
 4. Tipo: "Pontual"
-5. ✅ Link gerado instantaneamente
+5. O link é gerado na hora
 
-### Cobrança Recorrente
-1. Nova Cobrança → Tipo: "Mensal"
-2. Intervalo: 1, Data fim: opcional
-3. ✅ Primeira cobrança processada
-4. ✅ Próximas agendadas via cron
+### Cobrança recorrente
+1. Nova cobrança → Tipo: "Mensal"
+2. Intervalo: 1; data de fim: opcional
+3. A primeira cobrança é processada
+4. As próximas ficam agendadas pela tarefa automática
 
-### Validação JSON Canônico
+### Validação do JSON canônico
 ```json
 {
   "orderDetails": {
@@ -103,10 +103,10 @@ UPDATE profiles SET role = 'admin' WHERE email = 'seu@email.com';
 }
 ```
 
-## 📊 Monitoramento
+## Monitoramento
 
-- **Logs**: Supabase Edge Functions → quitaplus-proxy
-- **Auditoria**: Tabela `charge_executions`
-- **Cron Status**: Logs do `recurring-charges-cron`
+- **Registros**: Funções de borda do Supabase → `quitaplus-proxy`
+- **Auditoria**: tabela `charge_executions`
+- **Status da tarefa agendada**: registros de `recurring-charges-cron`
 
-✅ **Sistema pronto para produção!**
+O sistema está pronto para produção.

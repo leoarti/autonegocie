@@ -1,10 +1,10 @@
-# 🛡️ Bloqueio WAF/CDN - API Cappta
+# Bloqueio de WAF/CDN — API Cappta
 
-## Problema Identificado
+## Problema identificado
 
-A API da Cappta (`api.cappta.com.br`) está protegida por um **WAF (Web Application Firewall)** da Akamai que está **bloqueando requisições** vindas dos Supabase Edge Functions.
+A API da Cappta (`api.cappta.com.br`) está protegida por um firewall de aplicação web (WAF) da Akamai, que está bloqueando requisições vindas das funções de borda do Supabase.
 
-### Evidências do Bloqueio
+### Evidências do bloqueio
 
 ```
 HTTP 403 Forbidden
@@ -23,57 +23,57 @@ Reference #18.16f62917.1764342472.4cc3a29c
 </HTML>
 ```
 
-## Causas Prováveis
+## Causas prováveis
 
-1. **IP Dinâmico Não Whitelistado**
-   - Supabase Edge Functions usam IPs dinâmicos
-   - WAF não reconhece a origem das requisições
+1. **IP dinâmico fora da lista de permissão**
+   - As funções de borda do Supabase usam IPs dinâmicos
+   - O firewall não reconhece a origem das requisições
 
-2. **Headers Insuficientes ou Suspeitos**
-   - User-Agent não reconhecido
-   - Falta de headers esperados pelo WAF
+2. **Cabeçalhos insuficientes ou suspeitos**
+   - `User-Agent` não reconhecido
+   - Falta de cabeçalhos esperados pelo firewall
 
-3. **Rate Limiting**
-   - Muitas requisições do mesmo range de IPs
+3. **Limite de taxa**
+   - Muitas requisições da mesma faixa de IPs
    - Padrões de acesso considerados suspeitos
 
-4. **Regras de Segurança Específicas**
-   - Geo-blocking
-   - Blacklist de ASNs/provedores cloud
-   - Validações customizadas do WAF
+4. **Regras de segurança específicas**
+   - Bloqueio geográfico
+   - Lista de bloqueio de ASNs e provedores de nuvem
+   - Validações próprias do firewall
 
-## ✅ Soluções
+## Soluções
 
-### Solução 1: Whitelist de IPs (RECOMENDADA)
+### Solução 1: lista de permissão de IPs (recomendada)
 
-**Contatar Cappta** para adicionar os IPs do Supabase no whitelist do WAF.
+**Contatar a Cappta** para incluir os IPs do Supabase na lista de permissão do firewall.
 
-**IPs do Supabase Edge Functions:**
-- Consultar documentação oficial: https://supabase.com/docs/guides/functions/ip-addresses
-- Ranges típicos incluem AWS us-east-1 (onde Edge Functions rodam)
+**IPs das funções de borda do Supabase:**
+- Consultar a documentação oficial: https://supabase.com/docs/guides/functions/ip-addresses
+- As faixas típicas incluem a AWS `us-east-1` (onde as funções de borda rodam)
 
-**Informações para o Suporte:**
+**Informações para o suporte:**
 - Endpoint bloqueado: `/prepayment/authorize`
 - Referência do erro: `errors.edgesuite.net`
-- Origem: Supabase Edge Functions (AWS Lambda)
+- Origem: funções de borda do Supabase (AWS Lambda)
 
 ---
 
-### Solução 2: Proxy com IP Fixo
+### Solução 2: proxy com IP fixo
 
 Implementar um proxy intermediário com IP fixo:
 
 ```
-[Supabase Edge Function] 
+[Função de borda do Supabase]
     ↓
-[Proxy com IP Fixo] ← Whitelist no WAF
+[Proxy com IP fixo] ← lista de permissão no firewall
     ↓
 [API Cappta]
 ```
 
-**Opções de Proxy:**
-- VPS dedicado (DigitalOcean, Linode, etc.)
-- API Gateway (AWS API Gateway, Kong, etc.)
+**Opções de proxy:**
+- VPS dedicado (DigitalOcean, Linode etc.)
+- Gateway de API (AWS API Gateway, Kong etc.)
 - Cloudflare Workers com IP fixo
 
 **Exemplo de implementação:**
@@ -92,11 +92,11 @@ app.post('/prepayment/authorize', async (req, res) => {
     headers: {
       'Authorization': req.headers.authorization,
       'Content-Type': 'application/json',
-      // Headers adicionais...
+      // Cabeçalhos adicionais...
     },
     body: JSON.stringify(req.body)
   });
-  
+
   const data = await response.text();
   res.status(response.status).send(data);
 });
@@ -106,9 +106,9 @@ app.listen(3000);
 
 ---
 
-### Solução 3: Headers Otimizados (PARCIAL)
+### Solução 3: cabeçalhos mais realistas (parcial)
 
-Adicionar headers mais "realistas" para tentar passar pelo WAF:
+Adicionar cabeçalhos mais parecidos com os de um navegador para tentar passar pelo firewall:
 
 ```typescript
 headers: {
@@ -125,59 +125,59 @@ headers: {
 }
 ```
 
-⚠️ **Nota:** Esta solução pode não ser suficiente se o WAF bloqueia por IP.
+Esta solução pode não bastar se o firewall bloqueia pelo IP.
 
 ---
 
-### Solução 4: Ambiente de Homologação
+### Solução 4: ambiente de homologação
 
-Solicitar à Cappta um **ambiente de homologação/sandbox** sem WAF para testes de integração.
+Solicitar à Cappta um ambiente de homologação, sem firewall, para testes de integração.
 
 ---
 
-## 📊 Teste de Conectividade
+## Teste de conectividade
 
 Use a página `/admin/connectivity-test` para:
-- Testar obtenção de token
-- Verificar bloqueio do WAF
-- Visualizar resposta completa da API
-- Acompanhar logs em tempo real
+- Testar a obtenção do token
+- Verificar o bloqueio do firewall
+- Ver a resposta completa da API
+- Acompanhar os registros em tempo real
 
 ---
 
-## 🔍 Debug Adicional
+## Depuração adicional
 
-### Verificar IPs do Supabase
+### Verificar os IPs do Supabase
 
 ```bash
-# Fazer requisição através da edge function
+# Fazer a requisição pela função de borda
 curl -X POST https://<seu-projeto>.supabase.co/functions/v1/quitaplus-token
 ```
 
-### Logs Detalhados
+### Registros detalhados
 
-A edge function `quitaplus-prepayment` já registra:
-- Request completo (URL, method, headers, body mascarado)
-- Response completo (status, headers, body)
-- Detecção automática de bloqueio WAF
+A função `quitaplus-prepayment` já registra:
+- Requisição completa (URL, método, cabeçalhos, corpo mascarado)
+- Resposta completa (status, cabeçalhos, corpo)
+- Detecção automática de bloqueio do firewall
 
 ---
 
-## 📞 Contatos
+## Contatos
 
 **Suporte Cappta:**
-- Solicitar whitelist de IPs
-- Informar sobre bloqueio do WAF
-- Requisitar ambiente de sandbox
+- Solicitar inclusão dos IPs na lista de permissão
+- Informar o bloqueio do firewall
+- Pedir um ambiente de testes
 
-**Documentação Supabase:**
-- Edge Functions IPs: https://supabase.com/docs/guides/functions/ip-addresses
+**Documentação do Supabase:**
+- IPs das funções de borda: https://supabase.com/docs/guides/functions/ip-addresses
 
 ---
 
-## 📝 Status Atual
+## Situação atual
 
-- ✅ Token obtido com sucesso
-- ❌ Pré-pagamento bloqueado por WAF (403)
-- ❌ Vínculo de boleto pendente (aguarda pré-pagamento)
-- 🔄 Aguardando whitelist de IPs ou implementação de proxy
+- Token obtido com sucesso
+- Pré-pagamento bloqueado pelo firewall (403)
+- Vínculo de boleto pendente (aguarda o pré-pagamento)
+- Aguardando a lista de permissão de IPs ou a implementação de um proxy
